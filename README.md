@@ -249,8 +249,8 @@ cp .env.example .env
 
 ## Author
 
-[Your name] — Pure mathematics PhD, transitioning to data science.
+Jesse Koivu — Pure mathematics PhD, transitioning to data science.
 This project is part of a portfolio demonstrating statistical inference
 and causal reasoning applied to financial markets.
 
-[LinkedIn] · [GitHub]
+[[LinkedIn](https://www.linkedin.com/in/jesse-koivu-b3b0a72b5/)] · [[GitHub](https://github.com/JesseK37)]
