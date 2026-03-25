@@ -75,7 +75,7 @@ def fetch_fomc_dates(start: str, end: str) -> pd.DataFrame:
     df = dff.reset_index()
     df.columns = ["date", "rate"]
     df["rate_change"] = df["rate"].diff()
-    df["is_fomc_date"] = df["rate_change"].abs() > 0.001
+    df["is_fomc_date"] = df["rate_change"].abs() >= 0.24
     return df
 
 
@@ -149,7 +149,6 @@ def compute_realised_vol(prices: pd.Series, window: int = 21) -> pd.Series:
     -------
     pd.Series of annualised volatility (252-day convention).
     """
-    log_returns = prices.pct_change().apply(lambda x: pd.Series.pipe(x, lambda s: s))
     log_returns = prices.pct_change()
     realised_vol = log_returns.rolling(window).std() * (252 ** 0.5)
     realised_vol.name = f"realised_vol_{window}d"

@@ -39,3 +39,9 @@ Thumbs.db
 # Outputs — figures committed selectively
 outputs/figures/*.png
 outputs/figures/*.pdf
+
+# Exception: commit figures referenced in README
+!outputs/figures/03_causal_dag.png
+!outputs/figures/03_main_result.png
+!outputs/figures/04_placebo_test.png
+!outputs/figures/04_window_sensitivity.png

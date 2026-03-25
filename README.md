@@ -17,11 +17,16 @@ directions: the Fed cuts rates when markets are stressed (reverse
 causality), and shared macroeconomic drivers affect both Fed decisions
 and market volatility (confounding).
 
-**Main finding:** [Fill in after running the notebooks — e.g.: "A
-one-percentage-point surprise rate hike is associated with a X ± Y
-VIX point increase on the decision day (IV estimate, 95% CI).  The
-naive OLS estimate overstates / understates this effect by Z points,
-consistent with downward / upward confounding from ..."]
+**Main finding:** The IV estimate of the causal effect of a
+one-percentage-point Fed rate change on same-day VIX is **0.30
+(95% CI: −1.35 to 1.96)**, statistically indistinguishable from
+zero.  The naive OLS estimate is 0.35, implying a small upward bias
+of 0.04 points — consistent with modest reverse causality but not
+the dominant source of endogeneity.  Robustness checks across ten
+event windows, two volatility regimes, and three subsamples
+corroborate the null result.  The significant predictors of
+post-FOMC VIX movements are pre-meeting equity returns and the
+prevailing rate level, not the size of the rate change itself.
 
 ---
 
@@ -50,23 +55,29 @@ the causal effect — and what we cannot test.
 
 ### The instrument: Fed Funds surprises
 
-Following Kuttner (2001), we isolate the *surprise* component of each
-rate decision — the part that markets did not anticipate.  Because
-surprises are, by construction, unpredictable, they should not
-correlate with the pre-existing economic conditions that confound the
-OLS estimate.
+We isolate the *surprise* component of each rate decision — the part
+that markets did not anticipate — by constructing the instrument as
+the deviation of each rate change from the rolling mean of the
+preceding six FOMC decisions.  If the Fed has been cutting by 25 bps
+per meeting and suddenly cuts 50 bps, the extra 25 bps is treated as
+the surprise.
 
-The instrument is constructed as the residual from an AR(1) model
-for rate changes, estimated on non-FOMC trading days.
+This approach is a tractable approximation to the gold-standard
+measure based on Fed Funds futures prices (Kuttner 2001).  Because
+the surprise is constructed from the recent trend of Fed decisions
+rather than from market or volatility data, it should not correlate
+with the pre-existing conditions that confound the OLS estimate.
 
 **Instrument validity assumptions:**
 - **Relevance:** Surprises are correlated with actual rate changes
-  (verified: first-stage F = [fill in]).
+  (verified: first-stage F = **237.64**, well above the F > 10
+  rule of thumb).
 - **Exclusion restriction:** Surprises affect VIX *only through* the
   actual rate change, not through any other channel.  This is
-  defensible because surprises are, by definition, new information.
+  defensible because the surprise is constructed from the internal
+  sequence of Fed decisions, not from market data.
 - **Independence:** Surprises are uncorrelated with potential
-  outcomes.  Partially testable via the placebo test.
+  outcomes.  Partially verified via placebo test (see below).
 
 ### Estimation
 
@@ -76,6 +87,8 @@ with heteroskedasticity-robust standard errors.
 Controls: rate level (DFF), pre-FOMC equity return (captures
 anticipation effects documented by Lucca & Moench 2015).
 
+Sample: 110 FOMC rate-change events, 2000–2024.
+
 ---
 
 ## Results
@@ -84,17 +97,68 @@ anticipation effects documented by Lucca & Moench 2015).
 
 ![Main result](outputs/figures/03_main_result.png)
 
-*The IV estimate is [larger / smaller / opposite in sign] to OLS,
-consistent with [describe the confounding direction].*
+The IV estimate of 0.30 is slightly smaller than the OLS estimate
+of 0.35, consistent with a small upward bias from reverse causality
+— stressed markets prompt Fed cuts, inflating the raw correlation.
+However, both estimates are statistically insignificant, and the
+bias correction of 0.04 VIX points is economically negligible.  The
+dominant predictors of post-FOMC VIX movements are pre-meeting
+equity returns (coefficient ~44, p = 0.08) and the prevailing rate
+level (coefficient −0.37, p = 0.10), suggesting that market context
+matters more than the size of the rate move.
 
 ### Placebo test
 
 ![Placebo test](outputs/figures/04_placebo_test.png)
 
-*Running the same IV on 1,000 random samples of non-FOMC dates
-produces a distribution centred near zero.  The main estimate lies
-in the [X]th percentile of this distribution, confirming it is not
-a statistical artefact.*
+Running the same IV on 1,000 date-shifted pseudo-event samples
+produces a distribution centred near zero (mean = 2.73, std = 3.49).
+The main estimate of 0.30 falls at the **23rd percentile** of this
+distribution — well within the null, confirming the result is not
+a statistical artefact of the sample period or estimation procedure.
+
+### Event window sensitivity
+
+![Window sensitivity](outputs/figures/04_window_sensitivity.png)
+
+Across event windows of 1 to 10 trading days, the IV estimate
+remains statistically indistinguishable from zero at every horizon.
+Point estimates range from −2.19 (10-day) to +1.14 (8-day) with
+no monotonic trend, ruling out delayed or cumulative causal effects
+at short horizons.
+
+### Regime heterogeneity
+
+Splitting the sample at the median VIX level into high- and
+low-volatility regimes:
+
+| Regime | n | IV coef | 95% CI | p-value |
+|--------|---|---------|--------|---------|
+| Low volatility | 55 | −0.82 | [−2.20, 0.55] | 0.24 |
+| High volatility | 55 | −0.50 | [−2.76, 1.75] | 0.66 |
+
+Both regimes are individually insignificant, and the similarity in
+point estimates provides no evidence of heterogeneous treatment
+effects across market conditions.  The negative sign in both regimes
+is consistent with a resolution-of-uncertainty channel — a decisive
+Fed action may reduce VIX regardless of direction — but this
+interpretation requires caution given the wide confidence intervals.
+
+### Subsample stability
+
+| Period | n | IV coef | 95% CI | p-value |
+|--------|---|---------|--------|---------|
+| 2000–2007 | 53 | −0.96 | [−2.46, 0.53] | 0.21 |
+| 2008–2015 | 32 | 0.05 | [−3.93, 4.03] | 0.98 |
+| 2016–2024 | 25 | −2.90 | [−5.84, 0.04] | 0.05 |
+
+Results are stable across the pre-crisis and crisis eras.  The
+2016–2024 subsample shows a larger negative point estimate (−2.90,
+p = 0.053), grazing conventional significance.  This may reflect
+the post-QE environment in which forward guidance has made markets
+more sensitive to deviations from the expected rate path, but the
+result falls short of significance and should be interpreted
+cautiously given the small subsample (n = 25).
 
 ---
 
@@ -108,13 +172,15 @@ a statistical artefact.*
 | [yfinance](https://github.com/ranaroussi/yfinance) | ^VIX | CBOE Volatility Index daily |
 
 **Coverage:** 2000-01-01 to 2024-12-31 (~6,200 trading days,
-~60 rate-change FOMC events).
+110 rate-change FOMC events).
 
-**Data limitation:** The ideal surprise measure would use actual
-Fed Funds futures prices (CME data).  We use an AR(1) approximation,
-which may attenuate the first stage.  The likely direction of bias
-from this approximation is towards zero (attenuation bias), so our
-IV estimate is a *lower bound* on the true causal effect.
+**Data limitation:** The ideal surprise measure would use intraday
+Fed Funds futures prices around the announcement window (CME data,
+as in Kuttner 2001).  We use a rolling-mean approximation based on
+the sequence of prior Fed decisions.  This likely introduces
+attenuation bias toward zero in the first stage, meaning our IV
+estimate should be interpreted as a lower bound on the true causal
+effect magnitude.
 
 ---
 
@@ -131,7 +197,7 @@ fed_causal_vol/
 │   └── data_loader.py         # Reusable data fetch + DB utilities
 ├── data/
 │   ├── raw/                   # SQLite DB (gitignored, reproducible)
-│   └── processed/             # Cleaned analysis datasets
+│   └── processed/             # fomc_analysis.csv — cleaned analysis dataset
 ├── outputs/
 │   └── figures/               # All plots (selected ones committed)
 ├── .env.example               # API key template
@@ -163,6 +229,9 @@ cp .env.example .env
 # VS Code: open any .py notebook file, click "Run All" in the Jupyter toolbar
 # Terminal: pip install jupytext && jupytext --to notebook notebooks/01_data_ingestion.py
 ```
+
+**Note:** Notebooks must be run in order. Notebook 03 saves
+`data/processed/fomc_analysis.csv` which notebook 04 depends on.
 
 ---
 

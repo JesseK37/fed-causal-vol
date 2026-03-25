@@ -102,7 +102,7 @@ colors = {"low": "#1D9E75", "normal": "#185FA5", "high": "#D85A30"}
 for regime, color in colors.items():
     mask = df["vol_regime"] == regime
     ax.fill_between(df.index, df["vix_close"].where(mask), alpha=0.4, color=color, label=regime)
-ax.plot(df.index, df["vix_close"], color="var(--t)", linewidth=0.5, alpha=0.6)
+ax.plot(df.index, df["vix_close"], color="#d62728", linewidth=0.5, alpha=0.6)
 ax.set_title("VIX coloured by volatility regime")
 ax.set_ylabel("VIX")
 ax.xaxis.set_major_locator(mdates.YearLocator(2))

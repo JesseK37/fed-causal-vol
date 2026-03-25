@@ -83,11 +83,11 @@ df = df.set_index("date").sort_index()
 G = nx.DiGraph()
 
 nodes = {
-    "surprise":     "Instrument\n(Fed Funds surprise)",
+    "surprise":     "Instrument\n(Fed Funds\n surprise)",
     "rate_change":  "Treatment\n(rate change)",
     "vix_change":   "Outcome\n(ΔVIX)",
     "dff_level":    "Confounder\n(rate level)",
-    "spx_pre":      "Confounder\n(pre-FOMC return)",
+    "spx_pre":      "Confounder\n(pre-FOMC\n return)",
     "macro_stress": "Latent\n(macro stress)",
 }
 
@@ -163,29 +163,36 @@ fomc_dates_df = load_from_db("fomc_events")
 fomc_dates_df["date"] = pd.to_datetime(fomc_dates_df["date"])
 fomc_set = set(fomc_dates_df["date"])
 
-# Fit AR(1) on the rate-change series using only non-FOMC days
-# (so the forecast is not contaminated by the events we are studying)
-non_fomc = df[~df.index.isin(fomc_set)].copy()
-non_fomc["rate_change_lag1"] = non_fomc["rate_change"].shift(1)
-non_fomc_clean = non_fomc[["rate_change", "rate_change_lag1"]].dropna()
+print(fomc_dates_df.shape)
+print(fomc_dates_df.head(10))
+print(fomc_dates_df.dtypes)
 
-ar_model = sm.OLS(non_fomc_clean["rate_change"],
-                  sm.add_constant(non_fomc_clean["rate_change_lag1"])).fit()
 
-print("AR(1) model for rate changes (non-FOMC days):")
-print(ar_model.summary().tables[1])
+# Expected rate = previous FOMC meeting's rate (carry-forward)
+# Surprise = actual change minus what a naive "no change" forecast would predict
+# On FOMC days, the baseline expectation is zero change
+# Surprise = rate_change (valid because we're conditioning on FOMC days only)
+# BUT we need cross-sectional variation — use the SIZE of the change
+# relative to what the market cycle implied
 
-# %%
-# Compute the surprise as the residual on FOMC days
-fomc_days = df[df.index.isin(fomc_set)].copy()
-fomc_days["rate_change_lag1"] = df["rate_change"].shift(1).reindex(fomc_days.index)
 
-X_fomc = sm.add_constant(fomc_days["rate_change_lag1"].fillna(0))
-fomc_days["predicted_change"] = ar_model.predict(X_fomc)
-fomc_days["surprise"] = fomc_days["rate_change"] - fomc_days["predicted_change"]
+# Use days where rate actually changed as FOMC events
+# AR(1) on flat target rate is degenerate — surprise = rate change directly
+fomc_days = df[df["rate_change"].abs() >= 0.24].copy()
+
+# Use lagged DFF level as a proxy for expected rate path
+# Instrument: deviation of rate_change from its rolling mean over prior 6 meetings
+fomc_days = fomc_days.sort_index()
+fomc_days["surprise"] = (fomc_days["rate_change"] - 
+                         fomc_days["rate_change"].rolling(6, min_periods=3).mean().shift(1))
+
+print(fomc_days[["rate_change", "surprise"]].describe())
+print(f"\nCorrelation: {fomc_days['rate_change'].corr(fomc_days['surprise']):.3f}")
 
 print(f"\nFOMC event days with surprise instrument: {len(fomc_days)}")
-print(fomc_days[["rate_change", "predicted_change", "surprise"]].head(10))
+print(fomc_days[["rate_change", "surprise"]].head(10))
+
+
 
 # %% [markdown]
 # ## 3. Constructing the outcome variable
@@ -225,8 +232,20 @@ fomc_days = fomc_days.join(vix_change_df)
 fomc_days["dff_level"] = df["dff"].reindex(fomc_days.index)
 fomc_days["spx_pre"]   = df["spx_return"].shift(1).reindex(fomc_days.index)
 
+if "vol_regime" in fomc_days.columns:
+    fomc_days = fomc_days.drop(columns=["vol_regime"])
+
 fomc_analysis = fomc_days.dropna(subset=["surprise", "vix_change_1d", "dff_level"])
 print(f"\nClean FOMC analysis sample: {len(fomc_analysis)} events")
+fomc_analysis = fomc_analysis.dropna(subset=["rate_change", "surprise", "dff_level", "spx_pre"])
+print(f"After dropping NaNs: {len(fomc_analysis)} events")
+
+# Compute regime directly from fomc_analysis VIX values
+vix_median = fomc_analysis["vix_close"].median()
+fomc_analysis["vol_regime"] = np.where(
+    fomc_analysis["vix_close"] > vix_median, "high_vol", "low_vol"
+)
+print(fomc_analysis["vol_regime"].value_counts())
 
 # %% [markdown]
 # ## 4. First stage — instrument relevance
@@ -345,6 +364,18 @@ ax.set_title("Causal vs associational estimates\n(with 95% confidence intervals)
 plt.tight_layout()
 plt.savefig("../outputs/figures/03_main_result.png", dpi=150, bbox_inches="tight")
 plt.show()
+
+#For notebook 04, run the windows for analysis frame.
+for w in range(1, 11):
+    fomc_analysis[f"vix_change_{w}d"] = [
+        df["vix_close"].iloc[min(df.index.get_loc(d) + w, len(df)-1)] 
+        - df["vix_close"].iloc[df.index.get_loc(d) - 1]
+        for d in fomc_analysis.index
+    ]
+
+#Used in notebook 04
+fomc_analysis.to_csv("../data/processed/fomc_analysis.csv")
+print(f"Saved fomc_analysis: {fomc_analysis.shape}")
 
 # %% [markdown]
 # ## Summary — what we found and why it is credible
