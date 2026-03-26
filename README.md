@@ -211,21 +211,22 @@ fed_causal_vol/
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/fed-causal-vol.git
+git clone https://github.com/JesseK37/fed-causal-vol.git
 cd fed-causal-vol
 
 # 2. Create a virtual environment
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-# 3. Install dependencies
+# 3. Install dependencies (can do one by one.)
 pip install -r requirements.txt
 
 # 4. Add your FRED API key
 cp .env.example .env
 # Edit .env and paste your key (free at https://fred.stlouisfed.org/docs/api/api_key.html)
 
-# 5. Run notebooks in order (using VS Code, or convert to .ipynb first)
+# 5. Run notebooks in order (using terminal, VS Code, or convert to .ipynb first)
+# Bash: python 01_data_ingestion.py etc
 # VS Code: open any .py notebook file, click "Run All" in the Jupyter toolbar
 # Terminal: pip install jupytext && jupytext --to notebook notebooks/01_data_ingestion.py
 ```
