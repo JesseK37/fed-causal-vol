@@ -5,10 +5,7 @@
 # (DAG), state our identification assumptions explicitly, and implement
 # the Instrumental Variable (IV) estimator.
 #
-# This notebook is the methodological core of the project.  It is also
-# the part that demonstrates graduate-level statistical thinking — most
-# portfolio projects skip directly to a regression without ever asking
-# "why would OLS be wrong here?"
+# This notebook is the methodological core of the project.
 
 # %% [markdown]
 # ## 0. The identification problem — why OLS fails
@@ -34,7 +31,7 @@
 #
 # Below we define the causal graph using DoWhy.
 # Nodes = variables.  Directed edges = assumed causal relationships.
-# The absence of an edge is itself an assumption — state it explicitly.
+# The absence of an edge is itself an assumption.
 
 # %%
 import sys
@@ -78,7 +75,6 @@ df = df.set_index("date").sort_index()
 
 # %%
 # We will draw the DAG manually using networkx for clarity
-# (DoWhy's built-in graph drawing requires graphviz which may not be installed)
 
 G = nx.DiGraph()
 
@@ -149,12 +145,12 @@ plt.show()
 # the front-month Fed Funds futures contract on FOMC days.
 #
 # Since full historical futures data requires a paid feed, we
-# implement a widely-used approximation: the *unexpected* component
+# implement another approximation: the *unexpected* component
 # is proxied by the residual of a simple AR(1) model for the rate
 # change, estimated on non-FOMC days.  This captures the idea that
 # the "surprise" is what a simple forecast would not have predicted.
 #
-# **Important methodological note (include this reasoning in your README):**
+# **Important methodological note:**
 # A better instrument would be the actual futures-implied expectation.
 # We document this limitation and discuss its likely direction of bias.
 
@@ -169,15 +165,13 @@ print(fomc_dates_df.dtypes)
 
 
 # Expected rate = previous FOMC meeting's rate (carry-forward)
-# Surprise = actual change minus what a naive "no change" forecast would predict
 # On FOMC days, the baseline expectation is zero change
-# Surprise = rate_change (valid because we're conditioning on FOMC days only)
-# BUT we need cross-sectional variation — use the SIZE of the change
-# relative to what the market cycle implied
-
+# We model the surprise as a deviation of the rate change from a moving average
+# of the past 6 meetings.
 
 # Use days where rate actually changed as FOMC events
-# AR(1) on flat target rate is degenerate — surprise = rate change directly
+# AR(1) on flat target rate is degenerate — surprise = rate change directly; not a good model.
+
 fomc_days = df[df["rate_change"].abs() >= 0.24].copy()
 
 # Use lagged DFF level as a proxy for expected rate path
@@ -205,9 +199,6 @@ print(fomc_days[["rate_change", "surprise"]].head(10))
 # Both are informative; the 3-day window is less noisy.
 
 # %%
-for _, row in fomc_days.iterrows():
-    pass  # placeholder — we will build this loop properly below
-
 vix_changes = []
 for event_date in fomc_days.index:
     try:
@@ -308,9 +299,6 @@ print(iv_model_3d.summary.tables[1])
 #
 # We also run a naive OLS for comparison.  The difference between OLS
 # and IV estimates is the estimated bias from the confounders.
-# Documenting this comparison is one of the most valuable things you
-# can put in your write-up — it shows you understand *why* the method
-# matters, not just how to run the code.
 
 # %%
 ols_model = sm.OLS(
@@ -331,7 +319,7 @@ print(f"Estimated bias (OLS - IV):       {coef_ols - coef_iv:.4f}")
 # ## 7. Visualising the main result
 #
 # A coefficient plot showing the IV estimate with confidence intervals,
-# plus the OLS for comparison.  This is the key figure for the README.
+# plus the OLS for comparison.
 
 # %%
 fig, ax = plt.subplots(figsize=(7, 4))
@@ -380,10 +368,14 @@ print(f"Saved fomc_analysis: {fomc_analysis.shape}")
 # %% [markdown]
 # ## Summary — what we found and why it is credible
 #
-# Fill in after running:
-# - OLS estimate: [X] VIX points per 1pp rate hike
-# - IV estimate:  [Y] VIX points per 1pp rate hike
-# - First-stage F: [Z] (strong/weak instrument)
-# - Interpretation: [describe the direction and magnitude]
+# - OLS estimate: 0.3467 VIX points per 1pp rate hike
+# - IV estimate: 0.3049 VIX points per 1pp rate hike
+# - First-stage F: 237.64 (strong instrument)
+# - Statistical significance: The IV coefficient on rate_change is 0.305 (1-day) and 0.186 (3-day),
+#   both statistically insignificant (p = 0.72 and p = 0.88). 
+#   OLS gives 0.347, also insignificant. 
+#   The estimated bias is small at 0.042.
+# - Interpretation: Fed rate changes do not causally drive short-term VIX movements in a 
+#   statistically detectable way, at least not through the rate change magnitude alone.
 #
 # **Next:** `04_robustness.py` — placebo tests and sensitivity analysis.

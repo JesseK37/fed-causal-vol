@@ -182,6 +182,7 @@ plt.show()
 # our identification strategy must handle.
 
 # %%
+# We test the correlations between our variables.
 analysis_vars = ["vix_close", "realised_vol_21d", "spx_return",
                  "dff", "dgs10", "rate_change"]
 corr = df[analysis_vars].corr()
@@ -193,8 +194,32 @@ sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap="RdBu_r",
             linewidths=0.5, cbar_kws={"shrink": 0.8})
 ax.set_title("Pairwise correlations — key variables")
 plt.tight_layout()
+plt.savefig("../outputs/figures/02_correlation_heatmap2.png", dpi=150)
+plt.show()
+
+# The rate_change variable has almost no correlation with any of the other variables.
+# We have large positive correlation (to be expected) between DFF and DGS10
+# and between VIX and the realised volatility. There is a mild negative correlation between
+# VIX and S&P return/DFF
+# With this in mind, we will take a look at the correlations on the days when the
+# rate change is large enough (>0.24% i.e. >24 bps).
+
+df_moves = df[df["rate_change"].abs() >= 0.24].copy()
+
+analysis_vars = ["vix_close", "realised_vol_21d", "spx_return",
+                 "dff", "dgs10", "rate_change"]
+corr = df_moves[analysis_vars].corr()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+mask = np.triu(np.ones_like(corr, dtype=bool))
+sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap="RdBu_r",
+            center=0, vmin=-1, vmax=1, ax=ax,
+            linewidths=0.5, cbar_kws={"shrink": 0.8})
+ax.set_title(f"Pairwise correlations — FOMC move days only (n={len(df_moves)})")
+plt.tight_layout()
 plt.savefig("../outputs/figures/02_correlation_heatmap.png", dpi=150)
 plt.show()
+
 
 # %% [markdown]
 # ## 5. Pre-FOMC drift — a classic confounder
@@ -237,7 +262,7 @@ print(f"  t = {t_stat:.3f},  p = {p_val:.4f}")
 #    log(VIX) or use regime-stratified estimates.
 # 2. There is a *visible* pattern around FOMC dates in the raw data,
 #    but it mixes anticipated and surprise moves.
-# 3. The rate level (DFF) is strongly correlated with both VIX and the
+# 3. The rate level (DFF) is strongly correlated with VIX and correlated with the
 #    rate change — a confounder we must include as a control.
 # 4. There is a pre-FOMC drift effect, suggesting markets partially
 #    anticipate decisions.  This motivates the surprise instrument.

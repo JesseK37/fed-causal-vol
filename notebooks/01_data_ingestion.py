@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 # Allow imports from src/ regardless of where Jupyter is launched from
+# One could also add the working folder to path.
 sys.path.insert(0, str(Path("..").resolve()))
 
 import pandas as pd
@@ -39,7 +40,9 @@ from src.data_loader import (
 )
 
 # Date range for the whole project
-# We use 2000–present to capture multiple rate cycles and volatility regimes
+# We use 2000 until the end of 2024 to capture multiple rate cycles and volatility regimes.
+# Further there were multiple financial 'crises' over the time range (2008 market crash, covid),
+# which brings more depth to the dataset.
 START = "2000-01-01"
 END   = "2024-12-31"
 
@@ -55,6 +58,7 @@ print(f"Project date range: {START} → {END}")
 # The FRED API is rate-limited but generous for personal use.
 
 # %%
+# The fetched object is a pd.Series, 1d array with a date time index.
 print("Fetching DFF (daily fed funds rate)...")
 dff = fetch_fred_series("DFF", START, END)
 print(f"  DFF: {len(dff):,} observations, {dff.index.min().date()} to {dff.index.max().date()}")
@@ -79,7 +83,7 @@ print("Plot saved to outputs/figures/")
 
 # %% [markdown]
 # ## 2. Derive FOMC decision dates
-#
+# 
 # We identify FOMC meeting dates as days when the daily fed funds rate
 # changed.  This is the Kuttner (2001) convention and is accurate for
 # the post-1994 period when the Fed began explicitly announcing targets.
@@ -91,6 +95,8 @@ print("Plot saved to outputs/figures/")
 # formalise in Notebook 03.
 
 # %%
+# fomc_df object is a pd.DataFrame, with date, rate, change of rate and an identifier whether
+# the date is a FOMC meeting date.
 fomc_df = fetch_fomc_dates(START, END)
 fomc_events = fomc_df[fomc_df["is_fomc_date"]].copy()
 
@@ -133,7 +139,7 @@ print(equity_raw.head())
 spx_close = equity_raw["Close"]["^GSPC"].rename("spx_close")
 vix_close = equity_raw["Close"]["^VIX"].rename("vix_close")
 
-# Daily log returns on S&P 500
+# Daily percentage returns on S&P 500
 spx_returns = spx_close.pct_change().rename("spx_return")
 
 # Realised vol — 21-day and 5-day windows (we'll use both in analysis)
@@ -194,7 +200,7 @@ print(master.isna().sum())
 save_to_db(master.reset_index(), "master_daily")
 save_to_db(fomc_events, "fomc_events")
 
-print("\nAll data saved. Proceed to 02_eda.py")
+print("\nAll data saved. Can proceed to 02_eda.py")
 
 # %% [markdown]
 # ## 5. What we have — a summary
@@ -202,7 +208,7 @@ print("\nAll data saved. Proceed to 02_eda.py")
 # | Table | Rows | Key columns |
 # |-------|------|-------------|
 # | `master_daily` | ~6,200 | date, spx_return, vix_close, realised_vol_21d, dff, is_fomc_date, rate_change |
-# | `fomc_events` | ~60 | date, rate, rate_change |
+# | `fomc_events` | ~110 | date, rate, rate_change |
 #
 # **Next:** `02_eda.py` — exploratory analysis, regime identification,
 # and preliminary event plots around FOMC dates.
